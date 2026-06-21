@@ -1,5 +1,5 @@
 /**
- * Socket.IO Event Handlers for Continuum
+ * Socket.IO Event Handlers for Nexus
  *
  * CommonJS module loaded by server.js.
  * Handles real-time meeting communication, transcript streaming,
@@ -9,7 +9,7 @@
 const jwt = require('jsonwebtoken');
 const admin = require('./firebase-admin.js');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'continuum-dev-secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'nexus-dev-secret';
 
 // ─── Room state tracking ────────────────────────────────────────────────────
 /** @type {Map<string, Map<string, { userId: string, name: string, joinedAt: Date }>>} */
@@ -67,6 +67,10 @@ let _detectContradictions = null;
 let _generateMeetingSummary = null;
 /** @type {null | Function} */
 let _queryMemory = null;
+/** @type {null | Function} */
+let _upsertTranscriptSegment = null;
+/** @type {null | Object} */
+let _memoryStore = null;
 
 async function loadPipeline() {
   try {
@@ -112,6 +116,24 @@ async function loadPipeline() {
     }
   } catch (e) {
     console.warn('[socket] AI query engine not available yet:', e.message);
+  }
+
+  try {
+    if (!_upsertTranscriptSegment) {
+      const mod = await import('./ai/pinecone.js');
+      _upsertTranscriptSegment = mod.upsertTranscriptSegment;
+    }
+  } catch (e) {
+    console.warn('[socket] Pinecone indexing helper not available yet:', e.message);
+  }
+
+  try {
+    if (!_memoryStore) {
+      const mod = await import('./memory-store.js');
+      _memoryStore = mod.default;
+    }
+  } catch (e) {
+    console.warn('[socket] Memory store not available yet:', e.message);
   }
 }
 
@@ -242,7 +264,6 @@ module.exports = function setupSocketHandlers(io) {
         });
 
         // Send current state to the joining client
-        // TODO: Load existing transcript from DB/cache when persistence layer is ready
         const response = {
           meetingId,
           participants,
@@ -328,8 +349,36 @@ module.exports = function setupSocketHandlers(io) {
         // Broadcast the chunk to all participants in the room
         const roomKey = `meeting:${meetingId}`;
         io.to(roomKey).emit('transcript:chunk', enrichedChunk);
-
-        // TODO: Store chunk in DB and cache when persistence layer is ready
+        // Store chunk in database and memory store in background
+        setImmediate(async () => {
+          try {
+            await loadPipeline();
+            try {
+              const db = await import('./db.js');
+              await db.query(
+                `INSERT INTO transcript_segments (id, meeting_id, speaker_user_id, speaker_name, text, start_ts, end_ts)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [enrichedChunk.id, meetingId, enrichedChunk.speakerId, enrichedChunk.speaker, enrichedChunk.text, 0.0, 0.0]
+              );
+            } catch (dbErr) {
+              console.warn('[socket] Database save failed, falling back to memory store:', dbErr.message);
+              if (_memoryStore) {
+                _memoryStore.addTranscript({
+                  id: enrichedChunk.id,
+                  meetingId,
+                  speaker: enrichedChunk.speaker,
+                  speakerId: enrichedChunk.speakerId,
+                  text: enrichedChunk.text,
+                  start: 0,
+                  end: 0,
+                  capturedAt: enrichedChunk.timestamp,
+                });
+              }
+            }
+          } catch (storeErr) {
+            console.warn('[socket] Failed to store transcript chunk:', storeErr.message);
+          }
+        });
 
         // Run AI pipeline in background (non-blocking for the client)
         setImmediate(async () => {
@@ -408,6 +457,40 @@ module.exports = function setupSocketHandlers(io) {
               console.error('[socket] Contradiction detection error:', err.message);
             }
           }
+
+          // 4. Index to Pinecone Vector database
+          if (_upsertTranscriptSegment) {
+            try {
+              let meetingTitle = 'Meeting';
+              try {
+                const db = await import('./db.js');
+                const mRes = await db.query('SELECT title FROM meetings WHERE id = $1', [meetingId]);
+                if (mRes.rows.length > 0) {
+                  meetingTitle = mRes.rows[0].title;
+                }
+              } catch (dbErr) {
+                if (_memoryStore) {
+                  const meeting = _memoryStore.getMeeting(meetingId);
+                  if (meeting) {
+                    meetingTitle = meeting.title;
+                  }
+                }
+              }
+
+              const teamId = user.teamIds?.[0] || 'e0c6600c-b26a-4d7a-8f12-0fbc185906ef';
+              await _upsertTranscriptSegment({
+                id: enrichedChunk.id,
+                meetingId: enrichedChunk.meetingId,
+                text: enrichedChunk.text,
+                speaker: enrichedChunk.speaker,
+                start: 0,
+                end: 0,
+                capturedAt: enrichedChunk.timestamp
+              }, teamId, meetingTitle);
+            } catch (err) {
+              console.error('[socket] Pinecone indexing error:', err.message);
+            }
+          }
         });
 
         if (typeof ack === 'function') {
@@ -438,7 +521,6 @@ module.exports = function setupSocketHandlers(io) {
           `[socket] Decision ${decisionId} ${action}ed by ${user.name} in ${meetingId}`
         );
 
-        // TODO: Update knowledge node in DB when persistence layer is ready
         const decisionUpdate = {
           decisionId,
           action,
@@ -555,6 +637,17 @@ module.exports = function setupSocketHandlers(io) {
         });
 
         await loadPipeline();
+
+        // End meeting in memory store and database
+        if (_memoryStore) {
+          _memoryStore.endMeeting(meetingId);
+        }
+        try {
+          const db = await import('./db.js');
+          await db.query(`UPDATE meetings SET status = 'ended', ended_at = NOW() WHERE id = $1`, [meetingId]);
+        } catch (dbErr) {
+          console.warn('[socket] Failed to end meeting in Postgres:', dbErr.message);
+        }
 
         let summary = null;
         if (_generateMeetingSummary) {

@@ -12,6 +12,7 @@ const pool = new Pool({
   max: parseInt(process.env.PG_POOL_MAX ?? '20', 10),
   idleTimeoutMillis: parseInt(process.env.PG_IDLE_TIMEOUT ?? '30000', 10),
   connectionTimeoutMillis: parseInt(process.env.PG_CONNECT_TIMEOUT ?? '5000', 10),
+  ssl: process.env.DATABASE_URL?.includes('neon.tech') ? { rejectUnauthorized: false } : false,
 });
 
 /* ---------- connection lifecycle logging ---------- */

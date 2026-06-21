@@ -40,7 +40,7 @@ import groq, { FAST_MODEL } from './groq-client.js';
 
 /* ─── System prompt ────────────────────────────────────────────────── */
 
-const SYSTEM_PROMPT = `You are Continuum's real-time entity extraction engine. Your job is to parse meeting transcript chunks and output structured JSON.
+const SYSTEM_PROMPT = `You are Nexus's real-time entity extraction engine. Your job is to parse meeting transcript chunks and output structured JSON.
 
 ## Entity types you MUST recognise
 - **person**   — any named individual mentioned or speaking

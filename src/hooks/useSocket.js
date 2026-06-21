@@ -70,7 +70,7 @@ export function useSocket() {
     // Retrieve auth token from localStorage
     const token =
       typeof window !== 'undefined'
-        ? localStorage.getItem('continuum_access_token')
+        ? localStorage.getItem('nexus_access_token')
         : null;
 
     if (!token) {

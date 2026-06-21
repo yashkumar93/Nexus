@@ -101,8 +101,8 @@ export default function TranscriptFeed({ transcript, isLive }) {
                 >
                   {line.speaker || 'Unknown'}
                 </span>
-                <span className="text-[10px] font-[family-name:var(--font-mono)] text-text-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                  {formatTime(line.timestamp)}
+                <span className="text-[10px] font-[family-name:var(--font-mono)] text-text-3 ml-auto">
+                  {formatRange(line.start, line.end)}
                 </span>
               </div>
               <p className="text-sm text-text-2 pl-7 leading-relaxed">
@@ -148,5 +148,15 @@ function formatTime(seconds) {
   if (seconds == null) return '';
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const hours = Math.floor(mins / 60);
+  const minutePart = mins % 60;
+  return hours > 0
+    ? `${hours}:${minutePart.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    : `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function formatRange(start, end) {
+  const startLabel = formatTime(start);
+  if (end == null || Math.floor(end) <= Math.floor(start || 0)) return startLabel;
+  return `${startLabel} - ${formatTime(end)}`;
 }

@@ -1,4 +1,4 @@
--- Continuum Database Schema
+-- Nexus Database Schema
 -- Postgres + pgvector
 
 -- Enable extensions

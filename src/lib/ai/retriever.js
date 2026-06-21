@@ -1,13 +1,13 @@
 /**
  * @module retriever
  * @description Hybrid RAG retrieval (Mode 2 — Retriever).
- * Combines pgvector semantic search with knowledge-graph context,
- * then synthesises a cited answer via the quality model.
+ * Combines Pinecone semantic search with knowledge-graph context
+ * from the in-memory store, then synthesises a cited answer via the quality model.
  */
 
-import groq, { QUALITY_MODEL } from './groq-client.js';
-import { query } from '../db.js';
-import { searchSimilar } from './embeddings.js';
+import groq, { RAG_MODEL } from './groq-client.js';
+import { searchMemoryIndex } from './pinecone.js';
+import store from '../memory-store.js';
 
 /**
  * @typedef {Object} Citation
@@ -25,7 +25,7 @@ import { searchSimilar } from './embeddings.js';
 
 /* ─── Synthesis prompt ─────────────────────────────────────────────── */
 
-const SYNTHESIS_SYSTEM_PROMPT = `You are Continuum's Memory Retriever. You answer questions about past meetings using ONLY the provided context.
+const SYNTHESIS_SYSTEM_PROMPT = `You are Nexus's Memory Retriever. You answer questions about past meetings using ONLY the provided context.
 
 ## Rules
 1. Every factual claim in your answer MUST include a citation in the form [N] where N is the 1-based index of the source from the CONTEXT block.
@@ -92,8 +92,8 @@ function safeParse(raw) {
  * Search organisational memory and return a synthesised, cited answer.
  *
  * Pipeline:
- * 1. Semantic search via pgvector (embeddings table).
- * 2. Enrich with related knowledge graph nodes.
+ * 1. Semantic search via Pinecone.
+ * 2. Enrich with related knowledge graph nodes from in-memory store.
  * 3. Synthesise via QUALITY_MODEL with citation requirements.
  *
  * @param {string}   queryStr - Natural-language question
@@ -107,8 +107,8 @@ export async function searchMemory(queryStr, teamIds, limit = 5) {
       return EMPTY_RESULT;
     }
 
-    /* ── Step 1: Semantic search ─────────────────────────────────── */
-    const semanticHits = await searchSimilar(queryStr, teamIds, limit);
+    /* ── Step 1: Semantic search via Pinecone ─────────────────────── */
+    const semanticHits = await searchMemoryIndex(queryStr, teamIds, limit);
 
     if (semanticHits.length === 0) {
       return {
@@ -118,25 +118,27 @@ export async function searchMemory(queryStr, teamIds, limit = 5) {
     }
 
     /* ── Step 2: Enrich with knowledge graph nodes ───────────────── */
-    // Gather meeting IDs from semantic hits to find related nodes.
     const meetingIds = [...new Set(semanticHits.map((h) => h.meeting_id).filter(Boolean))];
 
     let graphNodes = [];
     if (meetingIds.length > 0) {
       try {
-        const graphResult = await query(
-          `SELECT kn.id, kn.label, kn.type, kn.properties, kn.status
+        const db = await import('../db.js');
+        const nodesResult = await db.query(
+          `SELECT DISTINCT kn.*
            FROM knowledge_nodes kn
-           JOIN knowledge_edges ke ON kn.id = ke.source_id OR kn.id = ke.target_id
-           JOIN embeddings e ON e.source_id = ke.source_id::text OR e.source_id = ke.target_id::text
-           WHERE e.meeting_id = ANY($1::uuid[])
-             AND kn.team_id = ANY($2::uuid[])
+           LEFT JOIN knowledge_edges ke ON ke.from_node_id = kn.id OR ke.to_node_id = kn.id
+           WHERE (kn.created_from_meeting_id = ANY($1) OR ke.source_meeting_id = ANY($1))
+             AND (kn.team_id IS NULL OR kn.team_id = ANY($2))
            LIMIT 20`,
           [meetingIds, teamIds]
         );
-        graphNodes = graphResult.rows;
-      } catch {
-        // Knowledge graph enrichment is best-effort; continue without it.
+        graphNodes = nodesResult.rows;
+      } catch (dbErr) {
+        console.warn('[retriever] Postgres knowledge nodes query failed, falling back to memory store:', dbErr.message);
+        try {
+          graphNodes = store.getRelatedKnowledgeNodes(meetingIds, teamIds);
+        } catch {}
       }
     }
 
@@ -160,7 +162,7 @@ export async function searchMemory(queryStr, teamIds, limit = 5) {
 
     /* ── Step 4: Synthesise answer ───────────────────────────────── */
     const response = await groq.chat.completions.create({
-      model: QUALITY_MODEL,
+      model: RAG_MODEL,
       messages: [
         { role: 'system', content: SYNTHESIS_SYSTEM_PROMPT },
         { role: 'user', content: `## Question\n${queryStr}\n\n${contextBlock}` },

@@ -57,7 +57,7 @@ export async function POST(request) {
       // Ensure organization exists
       await query(
         `INSERT INTO organizations (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`,
-        [orgId, 'Continuum Labs']
+        [orgId, 'Nexus Labs']
       );
 
       // Ensure default team exists

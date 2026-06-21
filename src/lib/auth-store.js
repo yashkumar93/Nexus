@@ -1,5 +1,5 @@
 /**
- * In-memory user store fallback for Continuum.
+ * In-memory user store fallback for Nexus.
  * Keeps user registrations active in the running server process if Postgres is down.
  */
 
@@ -8,7 +8,7 @@ export const MOCK_USERS = [
     id: 'a0f90e0c-99d9-43c3-b9db-3f8c85b1a0d1',
     org_id: 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0',
     name: 'Priya Patel',
-    email: 'priya@continuum.ai',
+    email: 'priya@nexus.ai',
     password_hash: '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76',
     role: 'org_admin',
     team_ids: ['e0c6600c-b26a-4d7a-8f12-0fbc185906ef', 'f1ca7ece-bd1f-4b07-8e6f-5799a2fe619c']
@@ -17,7 +17,7 @@ export const MOCK_USERS = [
     id: 'b0f90e0c-99d9-43c3-b9db-3f8c85b1a0d2',
     org_id: 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0',
     name: 'Devon Miller',
-    email: 'devon@continuum.ai',
+    email: 'devon@nexus.ai',
     password_hash: '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76',
     role: 'member',
     team_ids: ['e0c6600c-b26a-4d7a-8f12-0fbc185906ef']
@@ -26,7 +26,7 @@ export const MOCK_USERS = [
     id: 'c0f90e0c-99d9-43c3-b9db-3f8c85b1a0d3',
     org_id: 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0',
     name: 'Sam Chen',
-    email: 'sam@continuum.ai',
+    email: 'sam@nexus.ai',
     password_hash: '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76',
     role: 'member',
     team_ids: ['e0c6600c-b26a-4d7a-8f12-0fbc185906ef']
@@ -35,7 +35,7 @@ export const MOCK_USERS = [
     id: 'd0f90e0c-99d9-43c3-b9db-3f8c85b1a0d4',
     org_id: 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0',
     name: 'Nadia Ivanova',
-    email: 'nadia@continuum.ai',
+    email: 'nadia@nexus.ai',
     password_hash: '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76',
     role: 'member',
     team_ids: ['f1ca7ece-bd1f-4b07-8e6f-5799a2fe619c']
@@ -44,7 +44,7 @@ export const MOCK_USERS = [
     id: 'e0f90e0c-99d9-43c3-b9db-3f8c85b1a0d5',
     org_id: 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0',
     name: 'Maya Lin',
-    email: 'maya@continuum.ai',
+    email: 'maya@nexus.ai',
     password_hash: '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76',
     role: 'member',
     team_ids: ['f1ca7ece-bd1f-4b07-8e6f-5799a2fe619c']
@@ -53,7 +53,7 @@ export const MOCK_USERS = [
     id: 'f0f90e0c-99d9-43c3-b9db-3f8c85b1a0d6',
     org_id: 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0',
     name: 'Sarah Jenkins',
-    email: 'sarah@continuum.ai',
+    email: 'sarah@nexus.ai',
     password_hash: '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76',
     role: 'member',
     team_ids: ['f1ca7ece-bd1f-4b07-8e6f-5799a2fe619c']

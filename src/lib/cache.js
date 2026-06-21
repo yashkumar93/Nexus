@@ -252,11 +252,11 @@ class ScopedCache {
 /* ---------- singleton ---------- */
 
 /** @type {MemoryCache} */
-const cache = globalThis.__continuumCache ?? new MemoryCache();
+const cache = globalThis.__nexusCache ?? new MemoryCache();
 
 // Preserve the singleton across HMR in development
 if (process.env.NODE_ENV !== 'production') {
-  globalThis.__continuumCache = cache;
+  globalThis.__nexusCache = cache;
 }
 
 export { MemoryCache, ScopedCache };

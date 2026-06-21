@@ -1,19 +1,16 @@
 /**
  * @module embeddings
- * @description Embedding generation, storage, and similarity search.
+ * @description Embedding generation and text chunking utilities.
  *
  * For the hackathon we use a deterministic character-level hashing approach
  * to produce 384-dimensional vectors from text content.  This avoids an
  * external embedding API while still providing meaningful semantic grouping
  * (texts with similar character n-gram distributions will have similar vectors).
  *
- * Vectors are stored in the `embeddings` table via pgvector for cosine
- * similarity search, pre-filtered by team_ids.
+ * Vectors are stored in Pinecone for similarity search.
  */
 
-import pool, { query } from '../db.js';
-
-const EMBEDDING_DIM = 384;
+export const EMBEDDING_DIM = 384;
 
 /* ─── Deterministic embedding generation ───────────────────────────── */
 
@@ -100,92 +97,36 @@ export async function generateEmbedding(text) {
   return vec;
 }
 
-/* ─── Storage ──────────────────────────────────────────────────────── */
+/* ─── Text chunking ────────────────────────────────────────────────── */
 
 /**
- * Format a Float32Array as a pgvector literal `[0.1,0.2,...]`.
- * @param {Float32Array} vec
- * @returns {string}
- */
-function toPgVector(vec) {
-  return `[${Array.from(vec).join(',')}]`;
-}
-
-/**
- * Store an embedding in the `embeddings` table.
+ * Split text into overlapping chunks for embedding.
  *
- * @param {string} sourceType  - E.g. "transcript_chunk", "decision", "entity"
- * @param {string} sourceId    - UUID of the source record
- * @param {string} content     - Original text that was embedded
- * @param {string} teamId      - Team UUID for access filtering
- * @param {string} meetingId   - Meeting UUID this content originated from
- * @param {Object} [metadata]  - Arbitrary JSON metadata (speaker, timestamp…)
- * @returns {Promise<string>} The inserted embedding row's id.
+ * @param {string}  text      - Input text to chunk
+ * @param {number}  [maxWords=200] - Maximum words per chunk
+ * @param {number}  [overlap=40]   - Number of overlapping words between chunks
+ * @returns {string[]} Array of text chunks
  */
-export async function storeEmbedding(sourceType, sourceId, content, teamId, meetingId, metadata = {}) {
-  try {
-    const embedding = await generateEmbedding(content);
-    const pgVec = toPgVector(embedding);
+export function chunkText(text, maxWords = 200, overlap = 40) {
+  if (!text || text.trim().length === 0) return [];
 
-    const result = await query(
-      `INSERT INTO embeddings (source_type, source_id, content, vector, team_id, meeting_id, metadata)
-       VALUES ($1, $2, $3, $4::vector, $5, $6, $7)
-       RETURNING id`,
-      [sourceType, sourceId, content, pgVec, teamId, meetingId, JSON.stringify(metadata)]
-    );
+  const words = text.split(/\s+/).filter(Boolean);
 
-    return result.rows[0].id;
-  } catch (err) {
-    console.error('[embeddings] Failed to store embedding:', err.message);
-    throw err;
+  // If text is short enough, return as single chunk
+  if (words.length <= maxWords) {
+    return [words.join(' ')];
   }
-}
 
-/* ─── Similarity search ────────────────────────────────────────────── */
+  const chunks = [];
+  let start = 0;
 
-/**
- * Search for semantically similar content using cosine distance.
- *
- * @param {string}   queryText - Natural-language query
- * @param {string[]} teamIds   - Team UUIDs to scope the search
- * @param {number}   [limit=10] - Max results to return
- * @returns {Promise<Array<{id: string, source_type: string, source_id: string,
- *   content: string, meeting_id: string, metadata: Object, similarity: number}>>}
- */
-export async function searchSimilar(queryText, teamIds, limit = 10) {
-  try {
-    if (!queryText || !teamIds?.length) {
-      return [];
-    }
+  while (start < words.length) {
+    const end = Math.min(start + maxWords, words.length);
+    chunks.push(words.slice(start, end).join(' '));
 
-    const queryEmbedding = await generateEmbedding(queryText);
-    const pgVec = toPgVector(queryEmbedding);
-
-    // Use pgvector's cosine distance operator (<=>). Convert distance to
-    // similarity (1 - distance) so higher = more similar.
-    const result = await query(
-      `SELECT
-         id,
-         source_type,
-         source_id,
-         content,
-         meeting_id,
-         metadata,
-         1 - (vector <=> $1::vector) AS similarity
-       FROM embeddings
-       WHERE team_id = ANY($2::uuid[])
-       ORDER BY vector <=> $1::vector
-       LIMIT $3`,
-      [pgVec, teamIds, limit]
-    );
-
-    return result.rows.map((row) => ({
-      ...row,
-      metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
-      similarity: parseFloat(row.similarity),
-    }));
-  } catch (err) {
-    console.error('[embeddings] Similarity search failed:', err.message);
-    return [];
+    if (end >= words.length) break;
+    start += maxWords - overlap;
   }
+
+  return chunks;
 }

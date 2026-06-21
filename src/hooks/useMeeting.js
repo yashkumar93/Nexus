@@ -198,6 +198,7 @@ export function useMeeting() {
 
   /** Keep a ref to meetingId for use in callbacks without stale closures */
   const meetingIdRef = useRef(state.meetingId);
+  const pendingMeetingIdRef = useRef(null);
 
   useEffect(() => {
     meetingIdRef.current = state.meetingId;
@@ -274,17 +275,13 @@ export function useMeeting() {
 
   // ── Actions ─────────────────────────────────────────────────────────────
 
-  const joinMeeting = useCallback(
+  const performJoin = useCallback(
     (meetingId) => {
-      if (!isConnected) {
-        dispatch({ type: 'SET_ERROR', payload: 'Socket not connected' });
-        return;
-      }
-
-      dispatch({ type: 'JOIN_START', payload: meetingId });
+      if (!meetingId || !isConnected) return;
 
       emit('join-meeting', { meetingId }, (response) => {
         if (response?.success) {
+          pendingMeetingIdRef.current = null;
           dispatch({ type: 'JOIN_SUCCESS', payload: response.data });
         } else {
           dispatch({
@@ -297,8 +294,24 @@ export function useMeeting() {
     [isConnected, emit]
   );
 
+  const joinMeeting = useCallback(
+    (meetingId) => {
+      pendingMeetingIdRef.current = meetingId;
+      dispatch({ type: 'JOIN_START', payload: meetingId });
+      performJoin(meetingId);
+    },
+    [performJoin]
+  );
+
+  useEffect(() => {
+    if (isConnected && pendingMeetingIdRef.current) {
+      performJoin(pendingMeetingIdRef.current);
+    }
+  }, [isConnected, performJoin]);
+
   const leaveMeeting = useCallback(() => {
     const currentMeetingId = meetingIdRef.current;
+    pendingMeetingIdRef.current = null;
     if (!currentMeetingId) return;
 
     emit('leave-meeting', { meetingId: currentMeetingId }, () => {

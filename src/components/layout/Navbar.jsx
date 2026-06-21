@@ -71,10 +71,10 @@ export default function Navbar() {
         {/* ── Brand ─────────────────────────────────────────────────── */}
         <Link href="/dashboard" className="flex items-center gap-3 group">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-strong text-accent-ink font-[family-name:var(--font-display)] text-sm font-bold transition-transform duration-200 group-hover:scale-105">
-            C
+            N
           </div>
           <span className="font-[family-name:var(--font-display)] text-lg font-semibold text-text-1 tracking-tight hidden sm:block">
-            Continuum
+            Nexus
           </span>
         </Link>
 

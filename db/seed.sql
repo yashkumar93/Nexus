@@ -1,9 +1,9 @@
--- Seed data for Continuum
+-- Seed data for Nexus
 -- All passwords are 'demo123' hashed with bcrypt ($2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76)
 
 -- 1. Organizations
 INSERT INTO organizations (id, name, retention_policy_days, plan_tier) VALUES
-('d7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Continuum Labs', 365, 'enterprise');
+('d7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Nexus Labs', 365, 'enterprise');
 
 -- 2. Teams
 INSERT INTO teams (id, org_id, name) VALUES
@@ -13,12 +13,12 @@ INSERT INTO teams (id, org_id, name) VALUES
 
 -- 3. Users
 INSERT INTO users (id, org_id, name, email, password_hash, role) VALUES
-('a0f90e0c-99d9-43c3-b9db-3f8c85b1a0d1', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Priya Patel', 'priya@continuum.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'org_admin'),
-('b0f90e0c-99d9-43c3-b9db-3f8c85b1a0d2', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Devon Miller', 'devon@continuum.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member'),
-('c0f90e0c-99d9-43c3-b9db-3f8c85b1a0d3', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Sam Chen', 'sam@continuum.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member'),
-('d0f90e0c-99d9-43c3-b9db-3f8c85b1a0d4', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Nadia Ivanova', 'nadia@continuum.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member'),
-('e0f90e0c-99d9-43c3-b9db-3f8c85b1a0d5', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Maya Lin', 'maya@continuum.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member'),
-('f0f90e0c-99d9-43c3-b9db-3f8c85b1a0d6', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Sarah Jenkins', 'sarah@continuum.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member');
+('a0f90e0c-99d9-43c3-b9db-3f8c85b1a0d1', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Priya Patel', 'priya@nexus.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'org_admin'),
+('b0f90e0c-99d9-43c3-b9db-3f8c85b1a0d2', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Devon Miller', 'devon@nexus.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member'),
+('c0f90e0c-99d9-43c3-b9db-3f8c85b1a0d3', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Sam Chen', 'sam@nexus.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member'),
+('d0f90e0c-99d9-43c3-b9db-3f8c85b1a0d4', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Nadia Ivanova', 'nadia@nexus.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member'),
+('e0f90e0c-99d9-43c3-b9db-3f8c85b1a0d5', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Maya Lin', 'maya@nexus.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member'),
+('f0f90e0c-99d9-43c3-b9db-3f8c85b1a0d6', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'Sarah Jenkins', 'sarah@nexus.ai', '$2b$12$zDgWwWrpIwgNMSeZauJLB.iTyxl.8P2piwIjc78zif1UqKpoIxw76', 'member');
 
 -- 4. User Teams
 INSERT INTO user_teams (user_id, team_id) VALUES
@@ -53,14 +53,15 @@ INSERT INTO knowledge_nodes (id, org_id, type, label, claim_text, owner_user_id,
 ('66666666-6666-6666-6666-666666666666', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'tool', 'Vendor A', 'Primary payment gateway provider', NULL, 'active', NULL, NULL, 'f1ca7ece-bd1f-4b07-8e6f-5799a2fe619c'),
 ('77777777-7777-7777-7777-777777777777', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'tool', 'Vendor B', 'Alternative payment gateway provider with lower flat rates', NULL, 'active', NULL, NULL, 'f1ca7ece-bd1f-4b07-8e6f-5799a2fe619c'),
 ('88888888-8888-8888-8888-888888888888', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'decision', 'Use Vendor A', 'Use Vendor A for payments processing.', 'b0f90e0c-99d9-43c3-b9db-3f8c85b1a0d2', 'active', '2026-05-29 10:18:32+00', '11111111-1111-1111-1111-111111111111', 'f1ca7ece-bd1f-4b07-8e6f-5799a2fe619c'),
-('99999999-9999-9999-9999-999999999999', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'decision', 'Database Platform', 'Postgres remains the system of record for customer and billing data.', 'c0f90e0c-99d9-43c3-b9db-3f8c85b1a0d3', 'active', '2026-06-03 14:41:08+00', '22222222-2222-2222-2222-222222222222', 'e0c6600c-b26a-4d7a-8f12-0fbc185906ef');
+('99999999-9999-9999-9999-999999999999', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'decision', 'Database Platform', 'Postgres remains the system of record for customer and billing data.', 'c0f90e0c-99d9-43c3-b9db-3f8c85b1a0d3', 'active', '2026-06-03 14:41:08+00', '22222222-2222-2222-2222-222222222222', 'e0c6600c-b26a-4d7a-8f12-0fbc185906ef'),
+('44444444-5555-5555-5555-555555555555', 'd7b3b9b4-523d-4c3e-9083-d9d13dbff4d0', 'tool', 'Postgres', 'System of record database', NULL, 'active', NULL, NULL, 'e0c6600c-b26a-4d7a-8f12-0fbc185906ef');
 
 -- 9. Knowledge Edges
 INSERT INTO knowledge_edges (from_node_id, to_node_id, relation_type, source_meeting_id) VALUES
 ('55555555-5555-5555-5555-555555555555', '66666666-6666-6666-6666-666666666666', 'related_to', NULL),
 ('55555555-5555-5555-5555-555555555555', '77777777-7777-7777-7777-777777777777', 'related_to', NULL),
 ('66666666-6666-6666-6666-666666666666', '88888888-8888-8888-8888-888888888888', 'decided_by', '11111111-1111-1111-1111-111111111111'),
-('99999999-9999-9999-9999-999999999999', '22222222-2222-2222-2222-222222222222', 'decided_by', '22222222-2222-2222-2222-222222222222');
+('44444444-5555-5555-5555-555555555555', '99999999-9999-9999-9999-999999999999', 'decided_by', '22222222-2222-2222-2222-222222222222');
 
 -- 10. Action Items
 INSERT INTO action_items (meeting_id, owner_user_id, description, due_date, status) VALUES

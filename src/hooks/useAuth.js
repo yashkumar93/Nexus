@@ -18,8 +18,8 @@ import {
 } from '@/lib/firebase';
 
 const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'continuum_access_token',
-  USER: 'continuum_user',
+  ACCESS_TOKEN: 'nexus_access_token',
+  USER: 'nexus_user',
 };
 
 /**
@@ -91,7 +91,7 @@ export function AuthProvider({ children }) {
             teamIds,
             role,
             email,
-            name: firebaseUser.displayName || email.split('@')[0] || 'Continuum User',
+            name: firebaseUser.displayName || email.split('@')[0] || 'Nexus User',
           };
 
           setUser(mappedUser);

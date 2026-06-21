@@ -49,7 +49,7 @@ export function createTokens(user) {
 
   const accessToken = jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
-    issuer: 'continuum',
+    issuer: 'nexus',
     subject: payload.userId,
   });
 
@@ -58,7 +58,7 @@ export function createTokens(user) {
     JWT_REFRESH_SECRET,
     {
       expiresIn: JWT_REFRESH_EXPIRES_IN,
-      issuer: 'continuum',
+      issuer: 'nexus',
       subject: payload.userId,
     },
   );
@@ -74,7 +74,7 @@ export function createTokens(user) {
  * @throws {jwt.JsonWebTokenError | jwt.TokenExpiredError}
  */
 export function verifyToken(token) {
-  return jwt.verify(token, JWT_SECRET, { issuer: 'continuum' });
+  return jwt.verify(token, JWT_SECRET, { issuer: 'nexus' });
 }
 
 /**
@@ -85,7 +85,7 @@ export function verifyToken(token) {
  * @throws {jwt.JsonWebTokenError | jwt.TokenExpiredError}
  */
 export function verifyRefreshToken(token) {
-  return jwt.verify(token, JWT_REFRESH_SECRET, { issuer: 'continuum' });
+  return jwt.verify(token, JWT_REFRESH_SECRET, { issuer: 'nexus' });
 }
 
 /* ---------- password helpers ---------- */

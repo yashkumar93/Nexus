@@ -2,7 +2,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import "./globals.css";
 
 export const metadata = {
-  title: "Continuum — The Organizational Memory Engine",
+  title: "Nexus — The Organizational Memory Engine",
   description:
     "Every conversation makes your organization permanently smarter. Real-time meeting intelligence fused with a persistent knowledge graph.",
   keywords: [

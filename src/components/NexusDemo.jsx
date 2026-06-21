@@ -151,7 +151,7 @@ function LiveSidebar({ transcriptStep, contradictionResolved, setContradictionRe
       <div className="border-b border-border bg-good/5 px-4 py-3">
         <div className="flex items-start gap-2 text-sm text-text-2">
           <Icon name="shield" className="mt-0.5 h-4 w-4 text-good" />
-          <p>Continuum is present, recording status is visible to internal members and guests.</p>
+          <p>Nexus is present, recording status is visible to internal members and guests.</p>
         </div>
       </div>
 
@@ -366,7 +366,7 @@ function MemoryExplorer({ selectedNode, setSelectedNode, contradictionResolved }
   );
 }
 
-export default function ContinuumDemo() {
+export default function NexusDemo() {
   const { user, logout } = useAuth();
   const [transcriptStep, setTranscriptStep] = useState(0);
   const [selectedNode, setSelectedNode] = useState('payments');
@@ -391,7 +391,7 @@ export default function ContinuumDemo() {
               </div>
               <div>
                 <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-normal text-text-1 flex items-center gap-2">
-                  Continuum
+                  Nexus
                   <a
                     href="/prd.html"
                     target="_blank"

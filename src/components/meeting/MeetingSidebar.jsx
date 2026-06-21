@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
@@ -9,7 +11,7 @@ import ContradictionCard from '@/components/meeting/ContradictionCard';
 import AskMemoryInput from '@/components/meeting/AskMemoryInput';
 import MeetingSummary from '@/components/meeting/MeetingSummary';
 
-export default function MeetingSidebar({ meetingId, isExpanded, onToggle }) {
+export default function MeetingSidebar({ meetingId, isExpanded, onToggle, incomingSegments = [] }) {
   const { user } = useAuth();
   const { socket, isConnected } = useSocket();
   const [transcript, setTranscript] = useState([]);
@@ -22,18 +24,49 @@ export default function MeetingSidebar({ meetingId, isExpanded, onToggle }) {
   const [newCardCount, setNewCardCount] = useState(0);
   const sidebarRef = useRef(null);
 
+  const appendTranscriptSegments = useCallback((segments) => {
+    setTranscript((current) => {
+      const knownIds = new Set(current.map((segment) => segment.id));
+      const additions = segments
+        .filter((segment) => segment?.text && !knownIds.has(segment.id))
+        .map((segment) => ({
+          id: segment.id || crypto.randomUUID(),
+          speaker: segment.speaker || 'Meeting audio',
+          text: segment.text,
+          start: Number(segment.start ?? segment.start_ts ?? segment.timestamp) || 0,
+          end: Number(segment.end ?? segment.end_ts ?? segment.start ?? segment.start_ts ?? segment.timestamp) || 0,
+          speakerColor: getSpeakerColor(segment.speaker || 'Meeting audio'),
+        }));
+      return additions.length ? [...current, ...additions].sort((a, b) => a.start - b.start) : current;
+    });
+  }, []);
+
+  useEffect(() => {
+    const loadTranscript = async () => {
+      const token = localStorage.getItem('nexus_access_token');
+      const response = await fetch(`/api/meeting/${meetingId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) return;
+      const meeting = await response.json();
+      appendTranscriptSegments(meeting.transcript || []);
+    };
+
+    loadTranscript().catch((loadError) => {
+      console.warn('[MeetingSidebar] Failed to load transcript:', loadError.message);
+    });
+  }, [appendTranscriptSegments, meetingId]);
+
+  useEffect(() => {
+    appendTranscriptSegments(incomingSegments);
+  }, [appendTranscriptSegments, incomingSegments]);
+
   // Socket event listeners
   useEffect(() => {
     if (!socket) return;
 
     const handleTranscriptChunk = (chunk) => {
-      setTranscript(prev => [...prev, {
-        id: chunk.id || Date.now().toString(),
-        speaker: chunk.speaker,
-        text: chunk.text,
-        timestamp: chunk.start_ts,
-        speakerColor: getSpeakerColor(chunk.speaker),
-      }]);
+      appendTranscriptSegments([chunk]);
     };
 
     const handleContextCard = (card) => {
@@ -77,7 +110,7 @@ export default function MeetingSidebar({ meetingId, isExpanded, onToggle }) {
       socket.off('query:answer', handleQueryAnswer);
       socket.off('meeting:ended', handleMeetingEnd);
     };
-  }, [socket, isExpanded]);
+  }, [appendTranscriptSegments, socket, isExpanded]);
 
   const handleDismissContext = useCallback((cardId) => {
     setContextCards(prev =>
@@ -120,7 +153,7 @@ export default function MeetingSidebar({ meetingId, isExpanded, onToggle }) {
           onToggle();
         }}
         className="fixed right-0 top-1/2 -translate-y-1/2 z-40 w-12 h-32 bg-surface border border-border border-r-0 rounded-l-xl flex flex-col items-center justify-center gap-2 hover:bg-surface-2 hover:border-border-strong transition-all group"
-        title="Open Continuum sidebar"
+        title="Open Nexus sidebar"
       >
         <div className="relative">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent group-hover:text-accent-strong transition-colors">
@@ -155,7 +188,7 @@ export default function MeetingSidebar({ meetingId, isExpanded, onToggle }) {
           <div className="w-6 h-6 rounded-md bg-gradient-to-br from-accent to-accent-strong flex items-center justify-center">
             <span className="text-[10px] font-bold text-accent-ink font-[family-name:var(--font-display)]">C</span>
           </div>
-          <span className="text-sm font-semibold font-[family-name:var(--font-display)]">Continuum</span>
+          <span className="text-sm font-semibold font-[family-name:var(--font-display)]">Nexus</span>
           {isConnected ? (
             <span className="status-pill text-accent">
               <span className="live-dot" />

@@ -1,5 +1,5 @@
 /**
- * Continuum — Database Migration Script
+ * Nexus — Database Migration Script
  * Run with: node scripts/migrate.js
  * Requires DATABASE_URL in .env.local
  */
@@ -28,11 +28,26 @@ try {
 
 const { Pool } = require('pg');
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+console.log('[migrate] Connecting with DATABASE_URL:', process.env.DATABASE_URL);
 
 async function migrate() {
   const client = await pool.connect();
   try {
+    const existingSchema = await client.query(
+      "SELECT to_regclass('public.meetings') AS meetings"
+    );
+    if (existingSchema.rows[0].meetings) {
+      console.log('[migrate] Nexus schema already exists; nothing to do.');
+      return;
+    }
+
     console.log('[migrate] Reading schema.sql...');
     const schemaPath = path.join(__dirname, '../db/schema.sql');
     const sql = fs.readFileSync(schemaPath, 'utf8');

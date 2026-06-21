@@ -6,7 +6,7 @@
  */
 
 import groq, { QUALITY_MODEL } from './groq-client.js';
-import { query } from '../db.js';
+import store from '../memory-store.js';
 
 /**
  * @typedef {'consistent'|'refines'|'contradicts'|'unrelated'} Classification
@@ -31,7 +31,7 @@ import { query } from '../db.js';
 
 /* ─── System prompt (matches PRD §12.6) ────────────────────────────── */
 
-const CONTRADICTION_SYSTEM_PROMPT = `You are Continuum's Contradiction Detector. You compare a NEW decision against a set of EXISTING decisions and classify their relationship.
+const CONTRADICTION_SYSTEM_PROMPT = `You are Nexus's Contradiction Detector. You compare a NEW decision against a set of EXISTING decisions and classify their relationship.
 
 ## Classification labels
 - **consistent**  — The new decision is compatible with all existing decisions. No conflict.
@@ -118,44 +118,24 @@ export async function findRelatedDecisions(entityLabel, teamIds) {
       return [];
     }
 
-    // Find decisions connected to the matching entity, or decisions whose
-    // label / properties mention the entity label (fuzzy).
-    const result = await query(
-      `SELECT DISTINCT ON (kn.id)
-         kn.id,
-         kn.label,
-         kn.properties->>'claim_text' AS claim_text,
-         kn.status,
-         kn.created_at
-       FROM knowledge_nodes kn
-       WHERE kn.team_id = ANY($1::uuid[])
-         AND kn.type = 'decision'
-         AND kn.status = 'active'
-         AND (
-           kn.label ILIKE '%' || $2 || '%'
-           OR kn.properties->>'claim_text' ILIKE '%' || $2 || '%'
-           OR kn.id IN (
-             SELECT ke.source_id FROM knowledge_edges ke
-             JOIN knowledge_nodes kn2 ON kn2.id = ke.target_id
-             WHERE kn2.label ILIKE '%' || $2 || '%'
-             UNION
-             SELECT ke.target_id FROM knowledge_edges ke
-             JOIN knowledge_nodes kn2 ON kn2.id = ke.source_id
-             WHERE kn2.label ILIKE '%' || $2 || '%'
-           )
-         )
-       ORDER BY kn.id, kn.created_at DESC
-       LIMIT 20`,
-      [teamIds, entityLabel.trim()]
-    );
+    try {
+      const db = await import('../db.js');
+      const result = await db.query(
+        `SELECT id, label, claim_text, status, created_at
+         FROM knowledge_nodes
+         WHERE type = 'decision' AND status = 'active' AND (team_id IS NULL OR team_id = ANY($1))
+           AND (LOWER(label) LIKE LOWER($2) OR LOWER(claim_text) LIKE LOWER($2))
+         LIMIT 20`,
+        [teamIds, `%${entityLabel.trim()}%`]
+      );
+      if (result.rows.length > 0) {
+        return result.rows;
+      }
+    } catch (dbErr) {
+      console.warn('[contradiction] Postgres decisions query failed, falling back to memory store:', dbErr.message);
+    }
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      label: row.label,
-      claim_text: row.claim_text || row.label,
-      status: row.status,
-      created_at: row.created_at,
-    }));
+    return store.findDecisions(entityLabel.trim(), teamIds);
   } catch (err) {
     console.error('[contradiction] findRelatedDecisions failed:', err.message);
     return [];

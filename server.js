@@ -35,7 +35,7 @@ app.prepare().then(() => {
 
   server.listen(port, hostname, () => {
     console.log(
-      `> Continuum ready on http://${hostname}:${port} as ${
+      `> Nexus ready on http://${hostname}:${port} as ${
         dev ? 'development' : 'production'
       }`
     );

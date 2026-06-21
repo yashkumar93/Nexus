@@ -3,12 +3,12 @@ version: '3.9'
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: continuum-db
+    container_name: nexus-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: continuum
-      POSTGRES_PASSWORD: continuum_secret
-      POSTGRES_DB: continuum_db
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_secret
+      POSTGRES_DB: nexus_db
     ports:
       - "5432:5432"
     volumes:
@@ -16,21 +16,21 @@ services:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U continuum -d continuum_db"]
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   app:
     build: .
-    container_name: continuum-app
+    container_name: nexus-app
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://continuum:continuum_secret@db:5432/continuum_db
-      JWT_SECRET: ${JWT_SECRET:-continuum-jwt-secret-change-in-production}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-continuum-refresh-secret-change-in-production}
+      DATABASE_URL: postgresql://nexus:nexus_secret@db:5432/nexus_db
+      JWT_SECRET: ${JWT_SECRET:-nexus-jwt-secret-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-nexus-refresh-secret-change-in-production}
       JWT_EXPIRES_IN: 24h
       JWT_REFRESH_EXPIRES_IN: 7d
       GROQ_API_KEY: ${GROQ_API_KEY}
