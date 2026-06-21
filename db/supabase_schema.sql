@@ -71,6 +71,20 @@ create index if not exists transcript_meeting_id_idx on transcript_segments(meet
 create index if not exists transcript_start_ts_idx   on transcript_segments(start_ts asc);
 
 -- ============================================================
+-- Meeting Summaries (structured: decisions + action items)
+-- ============================================================
+create table if not exists meeting_summaries (
+  id           uuid primary key default gen_random_uuid(),
+  meeting_id   uuid not null references meetings(id) on delete cascade unique,
+  summary      text,                    -- narrative summary text
+  decisions    jsonb not null default '[]',
+  action_items jsonb not null default '[]',
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists meeting_summaries_meeting_id_idx on meeting_summaries(meeting_id);
+
+-- ============================================================
 -- Row Level Security (RLS)
 -- By default we disable RLS so server-side calls always work.
 -- Enable and customize once you have proper auth policies.
@@ -80,3 +94,5 @@ alter table teams                disable row level security;
 alter table meetings             disable row level security;
 alter table meeting_participants disable row level security;
 alter table transcript_segments  disable row level security;
+alter table meeting_summaries    disable row level security;
+

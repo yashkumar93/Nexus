@@ -123,19 +123,21 @@ export async function searchMemory(queryStr, teamIds, limit = 5) {
     let graphNodes = [];
     if (meetingIds.length > 0) {
       try {
-        const db = await import('../db.js');
-        const nodesResult = await db.query(
-          `SELECT DISTINCT kn.*
-           FROM knowledge_nodes kn
-           LEFT JOIN knowledge_edges ke ON ke.from_node_id = kn.id OR ke.to_node_id = kn.id
-           WHERE (kn.created_from_meeting_id = ANY($1) OR ke.source_meeting_id = ANY($1))
-             AND (kn.team_id IS NULL OR kn.team_id = ANY($2))
-           LIMIT 20`,
-          [meetingIds, teamIds]
-        );
-        graphNodes = nodesResult.rows;
+        // Try Supabase for knowledge nodes
+        const { createClient } = await import('@supabase/supabase-js');
+        const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (sbUrl && sbKey) {
+          const sb = createClient(sbUrl, sbKey, { auth: { autoRefreshToken: false, persistSession: false } });
+          const { data } = await sb
+            .from('knowledge_nodes')
+            .select('*')
+            .or(meetingIds.map(mid => `created_from_meeting_id.eq.${mid}`).join(','))
+            .limit(20);
+          if (data) graphNodes = data;
+        }
       } catch (dbErr) {
-        console.warn('[retriever] Postgres knowledge nodes query failed, falling back to memory store:', dbErr.message);
+        console.warn('[retriever] Supabase knowledge nodes query failed, falling back to memory store:', dbErr.message);
         try {
           graphNodes = store.getRelatedKnowledgeNodes(meetingIds, teamIds);
         } catch {}

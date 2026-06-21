@@ -67,11 +67,31 @@ export async function GET(request, { params }) {
 
         if (transcriptError) throw transcriptError;
 
+        // Fetch structured summary (decisions, action items)
+        let decisions = [];
+        let actionItems = [];
+        try {
+          const { data: summaryData } = await supabase
+            .from('meeting_summaries')
+            .select('decisions, action_items')
+            .eq('meeting_id', id)
+            .single();
+          if (summaryData) {
+            decisions = summaryData.decisions || [];
+            actionItems = summaryData.action_items || [];
+          }
+        } catch {
+          // meeting_summaries row may not exist yet — that's fine
+        }
+
         return NextResponse.json({
           id: meeting.id,
           title: meeting.title,
           status: meeting.status,
           summary: meeting.summary,
+          decisions,
+          actionItems,
+          platform: meeting.platform,
           date: meeting.started_at
             ? new Date(meeting.started_at).toISOString().split('T')[0]
             : new Date().toISOString().split('T')[0],
@@ -133,9 +153,20 @@ export async function PATCH(request, { params }) {
     }
 
     const body = await request.json();
-    if (body.status !== 'ended') {
+
+    // Support both ending meetings and saving summaries
+    const updates = {};
+    if (body.status === 'ended') {
+      updates.status = 'ended';
+      updates.ended_at = new Date().toISOString();
+    }
+    if (body.summary) {
+      updates.summary = typeof body.summary === 'string' ? body.summary : JSON.stringify(body.summary);
+    }
+
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json(
-        { error: 'Only ending a meeting is supported' },
+        { error: 'No valid update fields provided' },
         { status: 400 },
       );
     }
@@ -144,17 +175,40 @@ export async function PATCH(request, { params }) {
     try {
       const { data, error } = await supabase
         .from('meetings')
-        .update({ status: 'ended', ended_at: new Date().toISOString() })
+        .update(updates)
         .eq('id', id)
         .select()
         .single();
 
       if (!error && data) {
         store.endMeeting(id); // keep memory-store in sync
+
+        // If structured summary data was provided, store in meeting_summaries
+        if (body.summary || body.decisions || body.actionItems) {
+          try {
+            const summaryText = body.summary
+              ? (typeof body.summary === 'string' ? body.summary : JSON.stringify(body.summary))
+              : null;
+
+            await supabase.from('meeting_summaries').upsert(
+              {
+                meeting_id: id,
+                summary: summaryText,
+                decisions: body.decisions || [],
+                action_items: body.actionItems || [],
+              },
+              { onConflict: 'meeting_id' },
+            );
+          } catch (summaryErr) {
+            console.warn('[meeting detail api] Failed to save structured summary:', summaryErr.message);
+          }
+        }
+
         return NextResponse.json({
           id,
-          status: 'ended',
+          status: data.status,
           endedAt: data.ended_at,
+          summary: data.summary,
           persisted: true,
         });
       }
@@ -166,16 +220,18 @@ export async function PATCH(request, { params }) {
     }
 
     // 2. Fall back to memory store
-    const success = store.endMeeting(id);
-    if (!success) {
-      return NextResponse.json({ error: 'Meeting not found' }, { status: 404 });
+    if (body.status === 'ended') {
+      const success = store.endMeeting(id);
+      if (!success) {
+        return NextResponse.json({ error: 'Meeting not found' }, { status: 404 });
+      }
     }
 
     const meeting = store.getMeeting(id);
     return NextResponse.json({
       id,
-      status: 'ended',
-      endedAt: meeting.ended_at,
+      status: meeting?.status || 'ended',
+      endedAt: meeting?.ended_at,
       persisted: false,
     });
   } catch (err) {

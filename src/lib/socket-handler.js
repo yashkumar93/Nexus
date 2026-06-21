@@ -643,10 +643,15 @@ module.exports = function setupSocketHandlers(io) {
           _memoryStore.endMeeting(meetingId);
         }
         try {
-          const db = await import('./db.js');
-          await db.query(`UPDATE meetings SET status = 'ended', ended_at = NOW() WHERE id = $1`, [meetingId]);
+          const { createClient } = await import('@supabase/supabase-js');
+          const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+          if (sbUrl && sbKey) {
+            const sb = createClient(sbUrl, sbKey, { auth: { autoRefreshToken: false, persistSession: false } });
+            await sb.from('meetings').update({ status: 'ended', ended_at: new Date().toISOString() }).eq('id', meetingId);
+          }
         } catch (dbErr) {
-          console.warn('[socket] Failed to end meeting in Postgres:', dbErr.message);
+          console.warn('[socket] Failed to end meeting in Supabase:', dbErr.message);
         }
 
         let summary = null;
@@ -656,6 +661,32 @@ module.exports = function setupSocketHandlers(io) {
               orgId: user.orgId,
             });
             console.log(`[socket] Summary generated for meeting ${meetingId}`);
+
+            // Persist summary to Supabase
+            if (summary) {
+              try {
+                const { createClient } = await import('@supabase/supabase-js');
+                const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+                if (sbUrl && sbKey) {
+                  const sb = createClient(sbUrl, sbKey, { auth: { autoRefreshToken: false, persistSession: false } });
+
+                  // Save narrative summary to meetings table
+                  const summaryText = typeof summary.summary === 'string' ? summary.summary : JSON.stringify(summary);
+                  await sb.from('meetings').update({ summary: summaryText }).eq('id', meetingId);
+
+                  // Save structured summary to meeting_summaries table
+                  await sb.from('meeting_summaries').upsert({
+                    meeting_id: meetingId,
+                    summary: summaryText,
+                    decisions: summary.decisions || [],
+                    action_items: summary.actionItems || [],
+                  }, { onConflict: 'meeting_id' });
+                }
+              } catch (saveErr) {
+                console.warn('[socket] Failed to persist summary to Supabase:', saveErr.message);
+              }
+            }
           } catch (err) {
             console.error('[socket] Summary generation error:', err.message);
           }
